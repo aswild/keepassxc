@@ -813,6 +813,10 @@ build() {
     init
 
     OUTPUT_DIR="$(realpath "$OUTPUT_DIR")"
+    # Resolve appsign key to absolute path if under Windows
+    if [[ "${build_key}" && "$(uname -o)" == "Msys" ]]; then
+        build_key="$(realpath "${build_key}")"
+    fi
 
     if ${build_snapshot}; then
         TAG_NAME="HEAD"
@@ -848,14 +852,13 @@ build() {
 
         git archive --format=tar "$TAG_NAME" --prefix="${prefix}/" --output="${OUTPUT_DIR}/${tarball_name}"
 
-        if ! ${build_snapshot}; then
-            # add .version file to tar
-            mkdir "${prefix}"
-            echo -n ${RELEASE_NAME} > "${prefix}/.version"
-            tar --append --file="${OUTPUT_DIR}/${tarball_name}" "${prefix}/.version"
-            rm "${prefix}/.version"
-            rmdir "${prefix}" 2> /dev/null
-        fi
+        # add .version and .gitrev files to tarball
+        mkdir "${prefix}"
+        echo -n ${RELEASE_NAME} > "${prefix}/.version"
+        echo -n `git rev-parse --short=7 HEAD` > "${prefix}/.gitrev"
+        tar --append --file="${OUTPUT_DIR}/${tarball_name}" "${prefix}/.version" "${prefix}/.gitrev"
+        rm "${prefix}/.version" "${prefix}/.gitrev"
+        rmdir "${prefix}" 2> /dev/null
 
         xz -6 "${OUTPUT_DIR}/${tarball_name}"
     fi
@@ -920,7 +923,7 @@ build() {
             mingw32-make ${MAKE_OPTIONS} preinstall
 
             # Appsign the executables if desired
-            if ${build_appsign} && [ -f ${build_key} ]; then
+            if ${build_appsign} && [ -f "${build_key}" ]; then
                 logInfo "Signing executable files"
                 appsign "-f" $(find src | grep -P '\.exe$|\.dll$') "-k" "${build_key}"
             fi
