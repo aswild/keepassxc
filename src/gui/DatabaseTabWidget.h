@@ -82,7 +82,6 @@ public slots:
     void showDatabaseReports();
     void showDatabaseSettings();
     void performGlobalAutoType();
-    void performBrowserUnlock();
 
 signals:
     void databaseOpened(DatabaseWidget* dbWidget);
