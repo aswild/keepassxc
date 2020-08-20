@@ -230,7 +230,7 @@ void AutoType::executeAutoTypeActions(const Entry* entry, QWidget* hideWindow, c
         macUtils()->raiseLastActiveWindow();
         m_plugin->hideOwnWindow();
 #else
-        hideWindow->showMinimized();
+        getMainWindow()->minimizeOrHide();
 #endif
     }
 
@@ -266,7 +266,7 @@ void AutoType::executeAutoTypeActions(const Entry* entry, QWidget* hideWindow, c
 
 /**
  * Single Autotype entry-point function
- * Perfom autotype sequence in the active window
+ * Look up the Auto-Type sequence for the given entry then perfom Auto-Type in the active window
  */
 void AutoType::performAutoType(const Entry* entry, QWidget* hideWindow)
 {
@@ -280,6 +280,19 @@ void AutoType::performAutoType(const Entry* entry, QWidget* hideWindow)
     }
 
     executeAutoTypeActions(entry, hideWindow, sequences.first());
+}
+
+/**
+ * Extra Autotype entry-point function
+ * Perfom Auto-Type of the directly specified sequence in the active window
+ */
+void AutoType::performAutoTypeWithSequence(const Entry* entry, const QString& sequence, QWidget* hideWindow)
+{
+    if (!m_plugin) {
+        return;
+    }
+
+    executeAutoTypeActions(entry, hideWindow, sequence);
 }
 
 void AutoType::startGlobalAutoType()
