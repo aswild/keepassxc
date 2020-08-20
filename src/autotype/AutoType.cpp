@@ -35,6 +35,7 @@
 #include "core/ListDeleter.h"
 #include "core/Resources.h"
 #include "core/Tools.h"
+#include "gui/MainWindow.h"
 #include "gui/MessageBox.h"
 
 #ifdef Q_OS_MAC
