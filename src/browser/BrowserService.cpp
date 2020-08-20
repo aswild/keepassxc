@@ -64,7 +64,6 @@ BrowserService::BrowserService()
     : QObject()
     , m_browserHost(new BrowserHost)
     , m_dialogActive(false)
-    , m_bringToFrontRequested(false)
     , m_prevWindowState(WindowState::Normal)
     , m_keepassBrowserUUID(Tools::hexToUuid("de887cc3036343b8974b5911b8816224"))
 {
@@ -110,8 +109,6 @@ bool BrowserService::openDatabase(bool triggerUnlock)
     }
 
     if (triggerUnlock) {
-        m_bringToFrontRequested = true;
-        updateWindowState();
         emit requestUnlock();
     }
 
@@ -754,7 +751,7 @@ QList<Entry*> BrowserService::confirmEntries(QList<Entry*>& pwEntriesToConfirm,
     }
 
     m_dialogActive = true;
-    updateWindowState();
+    bool wasAppActive = qApp->activeWindow() == getMainWindow()->window();
     BrowserAccessControlDialog accessControlDialog;
 
     connect(m_currentDatabaseWidget, SIGNAL(databaseLocked()), &accessControlDialog, SLOT(reject()));
@@ -799,7 +796,11 @@ QList<Entry*> BrowserService::confirmEntries(QList<Entry*>& pwEntriesToConfirm,
 #ifdef Q_OS_MAC
     // Re-hide the application if it wasn't visible before
     // only affects macOS because dialogs force the main window to show
-    hideWindow();
+    if (!wasAppActive) {
+        hideWindow();
+    }
+#else
+    Q_UNUSED(wasAppActive);
 #endif
 
     m_dialogActive = false;
@@ -1246,13 +1247,6 @@ void BrowserService::databaseLocked(DatabaseWidget* dbWidget)
 void BrowserService::databaseUnlocked(DatabaseWidget* dbWidget)
 {
     if (dbWidget) {
-#ifdef Q_OS_MAC
-        if (m_bringToFrontRequested) {
-            m_bringToFrontRequested = false;
-            hideWindow();
-        }
-#endif
-
         QJsonObject msg;
         msg["action"] = QString("database-unlocked");
         m_browserHost->sendClientMessage(msg);
