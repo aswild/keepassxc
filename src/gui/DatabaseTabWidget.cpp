@@ -756,11 +756,3 @@ void DatabaseTabWidget::performGlobalAutoType()
         unlockDatabaseInDialog(currentDatabaseWidget(), DatabaseOpenDialog::Intent::AutoType);
     }
 }
-
-void DatabaseTabWidget::performBrowserUnlock()
-{
-    auto dbWidget = currentDatabaseWidget();
-    if (dbWidget && dbWidget->isLocked()) {
-        unlockDatabaseInDialog(dbWidget, DatabaseOpenDialog::Intent::Browser);
-    }
-}
