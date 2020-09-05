@@ -619,6 +619,18 @@ DatabaseWidget* DatabaseTabWidget::currentDatabaseWidget()
     return qobject_cast<DatabaseWidget*>(currentWidget());
 }
 
+DatabaseWidget* DatabaseTabWidget::databaseWidgetFromFilePath(const QString& filePath) const
+{
+    for (int i = 0, c = count(); i < c; ++i) {
+        auto* dbWidget = databaseWidgetFromIndex(i);
+        Q_ASSERT(dbWidget);
+        if (dbWidget && (dbWidget->database()->filePath() == filePath)) {
+            return dbWidget;
+        }
+    }
+    return nullptr;
+}
+
 /**
  * Attempt to lock all open databases
  *
@@ -666,6 +678,8 @@ void DatabaseTabWidget::unlockDatabaseInDialog(DatabaseWidget* dbWidget,
 {
     m_databaseOpenDialog->setTargetDatabaseWidget(dbWidget);
     m_databaseOpenDialog->setIntent(intent);
+    m_databaseOpenDialog->setMultiFile(intent == DatabaseOpenDialog::Intent::AutoType
+                                       || intent == DatabaseOpenDialog::Intent::Browser);
     m_databaseOpenDialog->setFilePath(filePath);
 
 #ifdef Q_OS_MACOS

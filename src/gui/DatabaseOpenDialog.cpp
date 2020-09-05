@@ -17,6 +17,7 @@
 
 #include "DatabaseOpenDialog.h"
 #include "DatabaseOpenWidget.h"
+#include "DatabaseTabWidget.h"
 #include "DatabaseWidget.h"
 #include "core/Database.h"
 
@@ -36,6 +37,28 @@ DatabaseOpenDialog::DatabaseOpenDialog(QWidget* parent)
     setLayout(layout);
     layout->addWidget(m_view);
     setMinimumWidth(700);
+}
+
+void DatabaseOpenDialog::setMultiFile(bool multiFile)
+{
+    if (multiFile) {
+        auto* tabWidget = qobject_cast<const DatabaseTabWidget*>(parentWidget());
+        if (!tabWidget) {
+            m_view->clearMultiFileList();
+            return;
+        }
+        QStringList fileList;
+        for (int i = 0, c = tabWidget->count(); i < c; ++i) {
+            auto* dbWidget = tabWidget->databaseWidgetFromIndex(i);
+            Q_ASSERT(dbWidget);
+            if (dbWidget) {
+                fileList << dbWidget->database()->filePath();
+            }
+        }
+        m_view->setMultiFileList(fileList);
+    } else {
+        m_view->clearMultiFileList();
+    }
 }
 
 void DatabaseOpenDialog::setFilePath(const QString& filePath)
@@ -65,6 +88,25 @@ void DatabaseOpenDialog::setIntent(DatabaseOpenDialog::Intent intent)
 DatabaseOpenDialog::Intent DatabaseOpenDialog::intent() const
 {
     return m_intent;
+}
+
+void DatabaseOpenDialog::changeFile(const QString& filePath)
+{
+    auto* tabWidget = qobject_cast<DatabaseTabWidget*>(parentWidget());
+    if (!tabWidget) {
+        return;
+    }
+
+    auto* dbWidget = tabWidget->databaseWidgetFromFilePath(filePath);
+    if (dbWidget) {
+        setTargetDatabaseWidget(dbWidget);
+        tabWidget->setCurrentIndex(tabWidget->indexOf(dbWidget));
+        setFilePath(filePath);
+    } else {
+        // no matching dbWidget for the filePath, it probably got closed while this dialog was open.
+        // cancel and let the user start over.
+        complete(false);
+    }
 }
 
 void DatabaseOpenDialog::clearForms()

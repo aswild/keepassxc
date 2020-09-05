@@ -24,6 +24,7 @@
 #include "core/Resources.h"
 #include "crypto/Random.h"
 #include "format/KeePass2Reader.h"
+#include "gui/DatabaseOpenDialog.h"
 #include "gui/FileDialog.h"
 #include "gui/MainWindow.h"
 #include "gui/MessageBox.h"
@@ -138,14 +139,49 @@ void DatabaseOpenWidget::hideEvent(QHideEvent* event)
     }
 }
 
+/**
+ * Set a list of files in a drop-down to choose a different database.
+ * Must be called before load(), and should only be called by DatabaseOpenDialog
+ */
+void DatabaseOpenWidget::setMultiFileList(const QStringList& filenameList)
+{
+    m_multiFileList = filenameList;
+}
+
+void DatabaseOpenWidget::clearMultiFileList()
+{
+    m_multiFileList.clear();
+}
+
 void DatabaseOpenWidget::load(const QString& filename)
 {
     clearForms();
 
     m_filename = filename;
-    m_ui->fileNameLabel->setRawText(m_filename);
+
+    if (m_multiFileList.count() > 1) {
+        m_ui->fileNameLabel->setVisible(false);
+        m_ui->fileNameList->addItems(m_multiFileList);
+        m_ui->fileNameList->setCurrentText(filename);
+        m_ui->fileNameList->setVisible(true);
+
+        // changing the file in a dropdown needs to go back up the parent tree to change the current database tab.
+        // The handler of this signal will come back and call load() here again.
+        auto* parentDialog = qobject_cast<DatabaseOpenDialog*>(parentWidget());
+        if (parentDialog) {
+            // clang-format off
+            connect(m_ui->fileNameList, SIGNAL(textActivated(const QString&)),
+                    parentDialog, SLOT(changeFile(const QString&)));
+            // clang-format on
+        }
+    } else {
+        m_ui->fileNameLabel->setRawText(m_filename);
+        m_ui->fileNameLabel->setVisible(true);
+        m_ui->fileNameList->setVisible(false);
+    }
 
     m_ui->keyFileClearIcon->setVisible(false);
+    m_ui->editPassword->setFocus();
 
     if (config()->get(Config::RememberLastKeyFiles).toBool()) {
         auto lastKeyFiles = config()->get(Config::LastKeyFiles).toHash();
@@ -170,6 +206,8 @@ void DatabaseOpenWidget::load(const QString& filename)
 
 void DatabaseOpenWidget::clearForms()
 {
+    disconnect(m_ui->fileNameList, SIGNAL(textActivated(const QString&)), nullptr, nullptr);
+    m_ui->fileNameList->clear();
     m_ui->editPassword->setText("");
     m_ui->editPassword->setShowPassword(false);
     m_ui->keyFileLineEdit->clear();

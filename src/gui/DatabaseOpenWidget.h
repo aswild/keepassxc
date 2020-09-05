@@ -45,6 +45,8 @@ public:
     void clearForms();
     void enterKey(const QString& pw, const QString& keyFile);
     QSharedPointer<Database> database();
+    void setMultiFileList(const QStringList& filenameList);
+    void clearMultiFileList();
 
 signals:
     void dialogFinished(bool accepted);
@@ -57,6 +59,7 @@ protected:
     const QScopedPointer<Ui::DatabaseOpenWidget> m_ui;
     QSharedPointer<Database> m_db;
     QString m_filename;
+    QStringList m_multiFileList;
     bool m_retryUnlockWithEmptyPassword = false;
 
 protected slots:

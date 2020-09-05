@@ -41,6 +41,7 @@ public:
     QString tabName(int index);
     DatabaseWidget* currentDatabaseWidget();
     DatabaseWidget* databaseWidgetFromIndex(int index) const;
+    DatabaseWidget* databaseWidgetFromFilePath(const QString& filePath) const;
 
     bool isReadOnly(int index = -1) const;
     bool canSave(int index = -1) const;
