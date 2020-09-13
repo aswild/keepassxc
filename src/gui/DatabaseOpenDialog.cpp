@@ -27,6 +27,7 @@ DatabaseOpenDialog::DatabaseOpenDialog(QWidget* parent)
 {
     setWindowTitle(tr("Unlock Database - KeePassXC"));
     setWindowFlags(Qt::Dialog | Qt::WindowStaysOnTopHint);
+    setWindowModality(Qt::ApplicationModal);
     connect(m_view, SIGNAL(dialogFinished(bool)), this, SLOT(complete(bool)));
     auto* layout = new QVBoxLayout();
     layout->setMargin(0);
@@ -47,7 +48,7 @@ void DatabaseOpenDialog::setMultiFile(bool multiFile)
         for (int i = 0, c = tabWidget->count(); i < c; ++i) {
             auto* dbWidget = tabWidget->databaseWidgetFromIndex(i);
             Q_ASSERT(dbWidget);
-            if (dbWidget) {
+            if (dbWidget && dbWidget->isLocked()) {
                 fileList << dbWidget->database()->filePath();
             }
         }
