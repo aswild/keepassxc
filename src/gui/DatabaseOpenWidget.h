@@ -41,12 +41,12 @@ public:
     explicit DatabaseOpenWidget(QWidget* parent = nullptr);
     ~DatabaseOpenWidget();
     void load(const QString& filename);
-    QString filename();
+    void setMultiFileList(const QStringList& filenameList);
+    void clearMultiFileList();
+    QString filename() const;
     void clearForms();
     void enterKey(const QString& pw, const QString& keyFile);
     QSharedPointer<Database> database();
-    void setMultiFileList(const QStringList& filenameList);
-    void clearMultiFileList();
 
 signals:
     void dialogFinished(bool accepted);

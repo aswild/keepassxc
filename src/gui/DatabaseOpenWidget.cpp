@@ -139,20 +139,6 @@ void DatabaseOpenWidget::hideEvent(QHideEvent* event)
     }
 }
 
-/**
- * Set a list of files in a drop-down to choose a different database.
- * Must be called before load(), and should only be called by DatabaseOpenDialog
- */
-void DatabaseOpenWidget::setMultiFileList(const QStringList& filenameList)
-{
-    m_multiFileList = filenameList;
-}
-
-void DatabaseOpenWidget::clearMultiFileList()
-{
-    m_multiFileList.clear();
-}
-
 void DatabaseOpenWidget::load(const QString& filename)
 {
     clearForms();
@@ -204,6 +190,20 @@ void DatabaseOpenWidget::load(const QString& filename)
 #endif
 }
 
+/**
+ * Set a list of files in a drop-down to choose a different database.
+ * Must be called before load(), and should only be called by DatabaseOpenDialog
+ */
+void DatabaseOpenWidget::setMultiFileList(const QStringList& filenameList)
+{
+    m_multiFileList = filenameList;
+}
+
+void DatabaseOpenWidget::clearMultiFileList()
+{
+    m_multiFileList.clear();
+}
+
 void DatabaseOpenWidget::clearForms()
 {
     disconnect(m_ui->fileNameList, SIGNAL(textActivated(const QString&)), nullptr, nullptr);
@@ -221,7 +221,7 @@ QSharedPointer<Database> DatabaseOpenWidget::database()
     return m_db;
 }
 
-QString DatabaseOpenWidget::filename()
+QString DatabaseOpenWidget::filename() const
 {
     return m_filename;
 }

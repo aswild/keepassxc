@@ -36,11 +36,30 @@ DatabaseOpenDialog::DatabaseOpenDialog(QWidget* parent)
     setMinimumWidth(700);
 }
 
+void DatabaseOpenDialog::setFilePath(const QString& filePath)
+{
+    m_view->load(filePath);
+}
+
+/**
+ * This method toggles multi-file mode on the open dialog. In multi-file mode, the database path is
+ * presented as a drop-down list of all open locked databases in the parent DatabaseTabWidget (if
+ * there is more than one).
+ *
+ * Changing the selected database in the drop-down list will change the active tab in the main UI,
+ * so that browser and auto-type searches the current/active database appropriately.
+ *
+ * This method should be called *before* setFilePath. setMultiFile on its own doesn't reload the
+ * child DatabaseOpenWidget view.
+ *
+ * @param multiFile Whether to enable/disable multiFile mode (default is disabled)
+ */
 void DatabaseOpenDialog::setMultiFile(bool multiFile)
 {
     if (multiFile) {
         auto* tabWidget = qobject_cast<const DatabaseTabWidget*>(parentWidget());
         if (!tabWidget) {
+            qWarning("DatabaseOpenDialog::setMultiFile: parent widget is unset or invalid");
             m_view->clearMultiFileList();
             return;
         }
@@ -56,11 +75,6 @@ void DatabaseOpenDialog::setMultiFile(bool multiFile)
     } else {
         m_view->clearMultiFileList();
     }
-}
-
-void DatabaseOpenDialog::setFilePath(const QString& filePath)
-{
-    m_view->load(filePath);
 }
 
 /**
@@ -85,25 +99,6 @@ void DatabaseOpenDialog::setIntent(DatabaseOpenDialog::Intent intent)
 DatabaseOpenDialog::Intent DatabaseOpenDialog::intent() const
 {
     return m_intent;
-}
-
-void DatabaseOpenDialog::changeFile(const QString& filePath)
-{
-    auto* tabWidget = qobject_cast<DatabaseTabWidget*>(parentWidget());
-    if (!tabWidget) {
-        return;
-    }
-
-    auto* dbWidget = tabWidget->databaseWidgetFromFilePath(filePath);
-    if (dbWidget) {
-        setTargetDatabaseWidget(dbWidget);
-        tabWidget->setCurrentIndex(tabWidget->indexOf(dbWidget));
-        setFilePath(filePath);
-    } else {
-        // no matching dbWidget for the filePath, it probably got closed while this dialog was open.
-        // cancel and let the user start over.
-        complete(false);
-    }
 }
 
 void DatabaseOpenDialog::clearForms()
@@ -134,4 +129,25 @@ void DatabaseOpenDialog::complete(bool accepted)
     }
     emit dialogFinished(accepted, m_dbWidget);
     clearForms();
+}
+
+void DatabaseOpenDialog::changeFile(const QString& filePath)
+{
+    auto* tabWidget = qobject_cast<DatabaseTabWidget*>(parentWidget());
+    if (!tabWidget) {
+        qWarning("DatabaseOpenDialog::changeFile: parent widget is unset or invalid");
+        return;
+    }
+
+    auto* dbWidget = tabWidget->databaseWidgetFromFilePath(filePath);
+    if (dbWidget) {
+        setTargetDatabaseWidget(dbWidget);
+        // make the newly-selected database active in the UI
+        tabWidget->setCurrentIndex(tabWidget->indexOf(dbWidget));
+        setFilePath(filePath);
+    } else {
+        // no matching dbWidget for the filePath, it probably got closed while this dialog was open.
+        // Cancel and let the user start over.
+        complete(false);
+    }
 }

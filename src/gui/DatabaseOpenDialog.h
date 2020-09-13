@@ -43,8 +43,8 @@ public:
 
     explicit DatabaseOpenDialog(QWidget* parent = nullptr);
     void setFilePath(const QString& filePath);
-    void setTargetDatabaseWidget(DatabaseWidget* dbWidget);
     void setMultiFile(bool multiFile);
+    void setTargetDatabaseWidget(DatabaseWidget* dbWidget);
     void setIntent(Intent intent);
     Intent intent() const;
     QSharedPointer<Database> database();
