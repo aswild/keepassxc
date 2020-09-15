@@ -664,9 +664,18 @@ void DatabaseTabWidget::unlockDatabaseInDialog(DatabaseWidget* dbWidget,
                                                DatabaseOpenDialog::Intent intent,
                                                const QString& filePath)
 {
-    m_databaseOpenDialog->setTargetDatabaseWidget(dbWidget);
+    (void)dbWidget; // FIXME; unused parameter, rewrite for merge intent
+    (void)filePath;
+    //m_databaseOpenDialog->setTargetDatabaseWidget(dbWidget);
+    m_databaseOpenDialog->clearForms();
     m_databaseOpenDialog->setIntent(intent);
-    m_databaseOpenDialog->setFilePath(filePath);
+    //m_databaseOpenDialog->setFilePath(filePath);
+    for (int i = 0, c = count(); i < c; ++i) {
+        auto* dbWidget = databaseWidgetFromIndex(i);
+        if (dbWidget && dbWidget->isLocked()) {
+            m_databaseOpenDialog->addDatabaseTab(dbWidget);
+        }
+    }
 
 #ifdef Q_OS_MACOS
     if (intent == DatabaseOpenDialog::Intent::AutoType || intent == DatabaseOpenDialog::Intent::Browser) {

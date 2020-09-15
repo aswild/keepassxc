@@ -17,40 +17,97 @@
 
 #include "DatabaseOpenDialog.h"
 #include "DatabaseOpenWidget.h"
+#include "DatabaseTabWidget.h"
 #include "DatabaseWidget.h"
 #include "core/Database.h"
+
+#include <QFileInfo>
+#include <QShortcut>
 
 DatabaseOpenDialog::DatabaseOpenDialog(QWidget* parent)
     : QDialog(parent)
     , m_view(new DatabaseOpenWidget(this))
+    , m_tabBar(new QTabBar(this))
 {
     setWindowTitle(tr("Unlock Database - KeePassXC"));
     setWindowFlags(Qt::Dialog | Qt::WindowStaysOnTopHint);
-    connect(m_view, SIGNAL(dialogFinished(bool)), this, SLOT(complete(bool)));
+    setWindowModality(Qt::ApplicationModal);
+    connect(m_view, &DatabaseOpenWidget::dialogFinished, this, &DatabaseOpenDialog::complete);
+
+    m_tabBar->setAutoHide(true);
+    m_tabBar->setExpanding(false);
+    connect(m_tabBar, &QTabBar::currentChanged, this, &DatabaseOpenDialog::tabChanged);
+
     auto* layout = new QVBoxLayout();
-    layout->setMargin(0);
-    setLayout(layout);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(0);
+    layout->addWidget(m_tabBar);
     layout->addWidget(m_view);
+    setLayout(layout);
     setMinimumWidth(700);
+
+    // set up Ctrl+PageUp and Ctrl+PageDown shortcuts to cycle tabs
+    auto* shortcut = new QShortcut(Qt::CTRL + Qt::Key_PageUp, this);
+    shortcut->setContext(Qt::WidgetWithChildrenShortcut);
+    connect(shortcut, &QShortcut::activated, this, [this]() { selectTabOffset(-1); });
+    shortcut = new QShortcut(Qt::CTRL + Qt::Key_PageDown, this);
+    shortcut->setContext(Qt::WidgetWithChildrenShortcut);
+    connect(shortcut, &QShortcut::activated, this, [this]() { selectTabOffset(1); });
 }
 
-void DatabaseOpenDialog::setFilePath(const QString& filePath)
+void DatabaseOpenDialog::selectTabOffset(int offset)
 {
-    m_view->load(filePath);
+    if (offset == 0 || m_tabBar->count() <= 1) {
+        return;
+    }
+    int tab = m_tabBar->currentIndex() + offset;
+    int last = m_tabBar->count() - 1;
+    if (tab < 0) {
+        tab = last;
+    } else if (tab > last) {
+        tab = 0;
+    }
+    m_tabBar->setCurrentIndex(tab);
+}
+
+void DatabaseOpenDialog::addDatabaseTab(DatabaseWidget* dbWidget)
+{
+    Q_ASSERT(dbWidget);
+    if (!dbWidget) {
+        return;
+    }
+
+    // important - we must add the DB widget first, because addTab will fire
+    // tabChanged immediately which will look for a dbWidget in the list
+    m_dbWidgets.append(dbWidget);
+
+    QFileInfo fileInfo(dbWidget->database()->filePath());
+    m_tabBar->addTab(fileInfo.fileName());
+    Q_ASSERT(m_dbWidgets.count() == m_tabBar->count());
+}
+
+void DatabaseOpenDialog::tabChanged(int index)
+{
+    if (index < 0 || index >= m_dbWidgets.count()) {
+        return;
+    }
+
+    // move finished signal to the new active database, and reload the UI
+    DatabaseWidget* dbWidget = m_dbWidgets[index];
+    setTarget(dbWidget, dbWidget->database()->filePath());
 }
 
 /**
- * Set target DatabaseWidget to which signals are connected.
- *
- * @param dbWidget database widget
+ * Sets the target DB and reloads the UI.
  */
-void DatabaseOpenDialog::setTargetDatabaseWidget(DatabaseWidget* dbWidget)
+void DatabaseOpenDialog::setTarget(DatabaseWidget* dbWidget, const QString& filePath)
 {
-    if (m_dbWidget) {
-        disconnect(this, nullptr, m_dbWidget, nullptr);
+    if (m_intent == Intent::Merge) {
+        m_mergeDbWidget = dbWidget;
     }
-    m_dbWidget = dbWidget;
+    disconnect(this, &DatabaseOpenDialog::dialogFinished, nullptr, nullptr);
     connect(this, &DatabaseOpenDialog::dialogFinished, dbWidget, &DatabaseWidget::unlockDatabase);
+    m_view->load(filePath);
 }
 
 void DatabaseOpenDialog::setIntent(DatabaseOpenDialog::Intent intent)
@@ -65,18 +122,35 @@ DatabaseOpenDialog::Intent DatabaseOpenDialog::intent() const
 
 void DatabaseOpenDialog::clearForms()
 {
-    m_view->clearForms();
     m_db.reset();
     m_intent = Intent::None;
-    if (m_dbWidget) {
-        disconnect(this, nullptr, m_dbWidget, nullptr);
-        m_dbWidget = nullptr;
+    disconnect(this, &DatabaseOpenDialog::dialogFinished, nullptr, nullptr);
+    m_dbWidgets.clear();
+
+    // block signals while removing tabs so that tabChanged doesn't get called
+    m_tabBar->blockSignals(true);
+    while (m_tabBar->count() > 0) {
+        m_tabBar->removeTab(0);
     }
+    m_tabBar->blockSignals(false);
 }
 
-QSharedPointer<Database> DatabaseOpenDialog::database()
+QSharedPointer<Database> DatabaseOpenDialog::database() const
 {
     return m_db;
+}
+
+DatabaseWidget* DatabaseOpenDialog::databaseWidget() const
+{
+    if (m_intent == Intent::Merge) {
+        return m_mergeDbWidget;
+    }
+
+    int index = m_tabBar->currentIndex();
+    if (index < m_dbWidgets.count()) {
+        return m_dbWidgets[index];
+    }
+    return nullptr;
 }
 
 void DatabaseOpenDialog::complete(bool accepted)
@@ -89,6 +163,14 @@ void DatabaseOpenDialog::complete(bool accepted)
     } else {
         reject();
     }
-    emit dialogFinished(accepted, m_dbWidget);
+
+    auto* dbWidget = databaseWidget();
+    if (m_intent != Intent::Merge) {
+        // Update the current database in the main UI to match what we just unlocked
+        auto* tabWidget = qobject_cast<DatabaseTabWidget*>(parentWidget());
+        tabWidget->setCurrentIndex(tabWidget->indexOf(dbWidget));
+    }
+
+    emit dialogFinished(accepted, dbWidget);
     clearForms();
 }
