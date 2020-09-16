@@ -46,10 +46,10 @@ public:
     explicit DatabaseOpenDialog(QWidget* parent = nullptr);
     void setTarget(DatabaseWidget* dbWidget, const QString& filePath);
     void addDatabaseTab(DatabaseWidget* dbWidget);
+    void setActiveDatabaseTab(DatabaseWidget* dbWidget);
     void setIntent(Intent intent);
     Intent intent() const;
     QSharedPointer<Database> database() const;
-    DatabaseWidget* databaseWidget() const;
     void clearForms();
 
 signals:
@@ -66,8 +66,8 @@ private:
     QPointer<DatabaseOpenWidget> m_view;
     QPointer<QTabBar> m_tabBar;
     QSharedPointer<Database> m_db;
-    QList<QPointer<DatabaseWidget>> m_dbWidgets;
-    QPointer<DatabaseWidget> m_mergeDbWidget;
+    QList<QPointer<DatabaseWidget>> m_tabDbWidgets;
+    QPointer<DatabaseWidget> m_currentDbWidget;
     Intent m_intent = Intent::None;
 };
 

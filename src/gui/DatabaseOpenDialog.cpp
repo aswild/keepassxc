@@ -79,22 +79,39 @@ void DatabaseOpenDialog::addDatabaseTab(DatabaseWidget* dbWidget)
 
     // important - we must add the DB widget first, because addTab will fire
     // tabChanged immediately which will look for a dbWidget in the list
-    m_dbWidgets.append(dbWidget);
-
+    m_tabDbWidgets.append(dbWidget);
     QFileInfo fileInfo(dbWidget->database()->filePath());
     m_tabBar->addTab(fileInfo.fileName());
-    Q_ASSERT(m_dbWidgets.count() == m_tabBar->count());
+    Q_ASSERT(m_tabDbWidgets.count() == m_tabBar->count());
+}
+
+void DatabaseOpenDialog::setActiveDatabaseTab(DatabaseWidget* dbWidget)
+{
+    if (!dbWidget) {
+        return;
+    }
+    int index = m_tabDbWidgets.indexOf(dbWidget);
+    if (index != -1) {
+        m_tabBar->setCurrentIndex(index);
+    }
 }
 
 void DatabaseOpenDialog::tabChanged(int index)
 {
-    if (index < 0 || index >= m_dbWidgets.count()) {
+    if (index < 0 || index >= m_tabDbWidgets.count()) {
         return;
     }
 
-    // move finished signal to the new active database, and reload the UI
-    DatabaseWidget* dbWidget = m_dbWidgets[index];
-    setTarget(dbWidget, dbWidget->database()->filePath());
+    if (m_tabDbWidgets.count() == m_tabBar->count()) {
+        DatabaseWidget* dbWidget = m_tabDbWidgets[index];
+        setTarget(dbWidget, dbWidget->database()->filePath());
+    } else {
+        // if these list sizes don't match, there's a bug somewhere nearby
+        Q_ASSERT(false);
+        qWarning("DatabaseOpenDialog: mismatch between tab count %d and DB count %d",
+                 m_tabBar->count(),
+                 m_tabDbWidgets.count());
+    }
 }
 
 /**
@@ -102,11 +119,13 @@ void DatabaseOpenDialog::tabChanged(int index)
  */
 void DatabaseOpenDialog::setTarget(DatabaseWidget* dbWidget, const QString& filePath)
 {
-    if (m_intent == Intent::Merge) {
-        m_mergeDbWidget = dbWidget;
+    // reconnect finished signal to new dbWidget, then reload the UI
+    if (m_currentDbWidget) {
+        disconnect(this, &DatabaseOpenDialog::dialogFinished, m_currentDbWidget, nullptr);
     }
-    disconnect(this, &DatabaseOpenDialog::dialogFinished, nullptr, nullptr);
     connect(this, &DatabaseOpenDialog::dialogFinished, dbWidget, &DatabaseWidget::unlockDatabase);
+
+    m_currentDbWidget = dbWidget;
     m_view->load(filePath);
 }
 
@@ -124,8 +143,11 @@ void DatabaseOpenDialog::clearForms()
 {
     m_db.reset();
     m_intent = Intent::None;
-    disconnect(this, &DatabaseOpenDialog::dialogFinished, nullptr, nullptr);
-    m_dbWidgets.clear();
+    if (m_currentDbWidget) {
+        disconnect(this, &DatabaseOpenDialog::dialogFinished, m_currentDbWidget, nullptr);
+    }
+    m_currentDbWidget.clear();
+    m_tabDbWidgets.clear();
 
     // block signals while removing tabs so that tabChanged doesn't get called
     m_tabBar->blockSignals(true);
@@ -140,19 +162,6 @@ QSharedPointer<Database> DatabaseOpenDialog::database() const
     return m_db;
 }
 
-DatabaseWidget* DatabaseOpenDialog::databaseWidget() const
-{
-    if (m_intent == Intent::Merge) {
-        return m_mergeDbWidget;
-    }
-
-    int index = m_tabBar->currentIndex();
-    if (index < m_dbWidgets.count()) {
-        return m_dbWidgets[index];
-    }
-    return nullptr;
-}
-
 void DatabaseOpenDialog::complete(bool accepted)
 {
     // save DB, since DatabaseOpenWidget will reset its data after accept() is called
@@ -164,13 +173,12 @@ void DatabaseOpenDialog::complete(bool accepted)
         reject();
     }
 
-    auto* dbWidget = databaseWidget();
     if (m_intent != Intent::Merge) {
         // Update the current database in the main UI to match what we just unlocked
         auto* tabWidget = qobject_cast<DatabaseTabWidget*>(parentWidget());
-        tabWidget->setCurrentIndex(tabWidget->indexOf(dbWidget));
+        tabWidget->setCurrentIndex(tabWidget->indexOf(m_currentDbWidget));
     }
 
-    emit dialogFinished(accepted, dbWidget);
+    emit dialogFinished(accepted, m_currentDbWidget);
     clearForms();
 }
