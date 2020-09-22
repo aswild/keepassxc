@@ -680,20 +680,22 @@ void DatabaseTabWidget::unlockAnyDatabaseInDialog(DatabaseOpenDialog::Intent int
 {
     m_databaseOpenDialog->clearForms();
     m_databaseOpenDialog->setIntent(intent);
+
+    // add a tab to the dialog for each open unlocked database
     for (int i = 0, c = count(); i < c; ++i) {
         auto* dbWidget = databaseWidgetFromIndex(i);
         if (dbWidget && dbWidget->isLocked()) {
             m_databaseOpenDialog->addDatabaseTab(dbWidget);
         }
     }
+    // default to the current tab
     m_databaseOpenDialog->setActiveDatabaseTab(currentDatabaseWidget());
     displayUnlockDialog();
 }
 
 /**
- * Display the unlock dialog.
- * Must be initialized using unlockDatabaseInDialog or unlockAnyDatabaseInDialog first
- * before calling this method.
+ * Display the unlock dialog after it's been initialized.
+ * This is an internal method, it should only be called by unlockDatabaseInDialog or unlockAnyDatabaseInDialog.
  */
 void DatabaseTabWidget::displayUnlockDialog()
 {

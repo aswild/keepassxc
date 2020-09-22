@@ -59,10 +59,9 @@ public slots:
     void complete(bool accepted);
     void tabChanged(int index);
 
-protected:
+private:
     void selectTabOffset(int offset);
 
-private:
     QPointer<DatabaseOpenWidget> m_view;
     QPointer<QTabBar> m_tabBar;
     QSharedPointer<Database> m_db;

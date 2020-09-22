@@ -31,6 +31,7 @@ DatabaseOpenDialog::DatabaseOpenDialog(QWidget* parent)
 {
     setWindowTitle(tr("Unlock Database - KeePassXC"));
     setWindowFlags(Qt::Dialog | Qt::WindowStaysOnTopHint);
+    // block input to the main window/application while the dialog is open
     setWindowModality(Qt::ApplicationModal);
     connect(m_view, &DatabaseOpenWidget::dialogFinished, this, &DatabaseOpenDialog::complete);
 
@@ -107,7 +108,6 @@ void DatabaseOpenDialog::tabChanged(int index)
         setTarget(dbWidget, dbWidget->database()->filePath());
     } else {
         // if these list sizes don't match, there's a bug somewhere nearby
-        Q_ASSERT(false);
         qWarning("DatabaseOpenDialog: mismatch between tab count %d and DB count %d",
                  m_tabBar->count(),
                  m_tabDbWidgets.count());
@@ -141,6 +141,7 @@ DatabaseOpenDialog::Intent DatabaseOpenDialog::intent() const
 
 void DatabaseOpenDialog::clearForms()
 {
+    m_view->clearForms();
     m_db.reset();
     m_intent = Intent::None;
     if (m_currentDbWidget) {
