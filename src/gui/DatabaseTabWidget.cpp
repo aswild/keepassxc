@@ -700,6 +700,7 @@ void DatabaseTabWidget::unlockAnyDatabaseInDialog(DatabaseOpenDialog::Intent int
 void DatabaseTabWidget::displayUnlockDialog()
 {
 #ifdef Q_OS_MACOS
+    auto intent = m_databaseOpenDialog->intent();
     if (intent == DatabaseOpenDialog::Intent::AutoType || intent == DatabaseOpenDialog::Intent::Browser) {
         macUtils()->raiseOwnWindow();
         Tools::wait(200);
