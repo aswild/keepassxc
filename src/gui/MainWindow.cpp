@@ -39,6 +39,7 @@
 #include "gui/DatabaseWidget.h"
 #include "gui/MessageBox.h"
 #include "gui/SearchWidget.h"
+#include "gui/osutils/OSUtils.h"
 #include "keys/CompositeKey.h"
 #include "keys/FileKey.h"
 #include "keys/PasswordKey.h"
@@ -496,6 +497,8 @@ MainWindow::MainWindow()
     connect(m_ui->actionOnlineHelp, SIGNAL(triggered()), SLOT(openOnlineHelp()));
     connect(m_ui->actionKeyboardShortcuts, SIGNAL(triggered()), SLOT(openKeyboardShortcuts()));
 
+    connect(osUtils, &OSUtilsBase::statusbarThemeChanged, this, &MainWindow::updateTrayIcon);
+
 #if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
     // Install event filter for empty-area drag
     auto* eventFilter = new MainWindowEventFilter(this);
@@ -555,6 +558,9 @@ MainWindow::MainWindow()
                                                MessageWidget::Error);
     }
 
+    // Properly shutdown on logoff, restart, and shutdown
+    connect(qApp, &QGuiApplication::commitDataRequest, this, [this] { m_appExitCalled = true; });
+
 #if defined(KEEPASSXC_BUILD_TYPE_SNAPSHOT) || defined(KEEPASSXC_BUILD_TYPE_PRE_RELEASE)
     auto* hidePreRelWarn = new QAction(tr("Don't show again for this version"), m_ui->globalMessageWidget);
     m_ui->globalMessageWidget->addAction(hidePreRelWarn);
@@ -596,10 +602,18 @@ MainWindow::MainWindow()
         config()->set(Config::Messages_Qt55CompatibilityWarning, true);
     }
 #endif
+
+    QObject::connect(qApp, SIGNAL(anotherInstanceStarted()), this, SLOT(bringToFront()));
+    QObject::connect(qApp, SIGNAL(applicationActivated()), this, SLOT(bringToFront()));
+    QObject::connect(qApp, SIGNAL(openFile(QString)), this, SLOT(openDatabase(QString)));
+    QObject::connect(qApp, SIGNAL(quitSignalReceived()), this, SLOT(appExit()), Qt::DirectConnection);
 }
 
 MainWindow::~MainWindow()
 {
+#ifdef WITH_XC_SSHAGENT
+    sshAgent()->removeAllIdentities();
+#endif
 }
 
 QList<DatabaseWidget*> MainWindow::getOpenDatabases()
@@ -932,6 +946,13 @@ void MainWindow::updateWindowTitle()
 void MainWindow::showAboutDialog()
 {
     auto* aboutDialog = new AboutDialog(this);
+    // Auto close the about dialog before attempting database locks
+    if (m_ui->tabWidget->currentDatabaseWidget()) {
+        connect(m_ui->tabWidget->currentDatabaseWidget(),
+                &DatabaseWidget::databaseLockRequested,
+                aboutDialog,
+                &AboutDialog::close);
+    }
     aboutDialog->open();
 }
 
@@ -1724,8 +1745,10 @@ void MainWindow::initViewMenu()
 
     connect(themeActions, &QActionGroup::triggered, this, [this, theme](QAction* action) {
         config()->set(Config::GUI_ApplicationTheme, action->data());
-        if (action->data() != theme) {
+        if ((action->data() == "classic" || theme == "classic") && action->data() != theme) {
             restartApp(tr("You must restart the application to apply this setting. Would you like to restart now?"));
+        } else {
+            kpxcApp->applyTheme();
         }
     });
 
