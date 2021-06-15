@@ -279,15 +279,15 @@ void TestGui::testCreateDatabase()
         QTRY_VERIFY(!additionalOptionsButton->isVisible());
         QCOMPARE(passwordWidget->visiblePage(), KeyFileEditWidget::Page::Edit);
         QTest::mouseClick(keyFileWidget->findChild<QPushButton*>("addButton"), Qt::MouseButton::LeftButton);
-        auto* fileCombo = keyFileWidget->findChild<QComboBox*>("keyFileCombo");
-        QTRY_VERIFY(fileCombo);
-        QTRY_VERIFY(fileCombo->isVisible());
+        auto* fileEdit = keyFileWidget->findChild<QLineEdit*>("keyFileLineEdit");
+        QTRY_VERIFY(fileEdit);
+        QTRY_VERIFY(fileEdit->isVisible());
         fileDialog()->setNextFileName(QString("%1/%2").arg(QString(KEEPASSX_TEST_DATA_DIR), "FileKeyHashed.key"));
         QTest::keyClick(keyFileWidget->findChild<QPushButton*>("addButton"), Qt::Key::Key_Enter);
-        QVERIFY(fileCombo->hasFocus());
+        QVERIFY(fileEdit->hasFocus());
         auto* browseButton = keyFileWidget->findChild<QPushButton*>("browseKeyFileButton");
         QTest::keyClick(browseButton, Qt::Key::Key_Enter);
-        QCOMPARE(fileCombo->currentText(), QString("%1/%2").arg(QString(KEEPASSX_TEST_DATA_DIR), "FileKeyHashed.key"));
+        QCOMPARE(fileEdit->text(), QString("%1/%2").arg(QString(KEEPASSX_TEST_DATA_DIR), "FileKeyHashed.key"));
 
         // save database to temporary file
         TemporaryFile tmpFile;
@@ -295,7 +295,7 @@ void TestGui::testCreateDatabase()
         tmpFile.close();
         fileDialog()->setNextFileName(tmpFile.fileName());
 
-        QTest::keyClick(fileCombo, Qt::Key::Key_Enter);
+        QTest::keyClick(fileEdit, Qt::Key::Key_Enter);
         tmpFile.remove(););
 
     triggerAction("actionDatabaseNew");
@@ -853,7 +853,7 @@ void TestGui::testTotp()
 void TestGui::testSearch()
 {
     // Add canned entries for consistent testing
-    Q_UNUSED(addCannedEntries());
+    addCannedEntries();
 
     auto* toolBar = m_mainWindow->findChild<QToolBar*>("toolBar");
 
@@ -1007,7 +1007,7 @@ void TestGui::testSearch()
 void TestGui::testDeleteEntry()
 {
     // Add canned entries for consistent testing
-    Q_UNUSED(addCannedEntries());
+    addCannedEntries();
 
     auto* groupView = m_dbWidget->findChild<GroupView*>("groupView");
     auto* entryView = m_dbWidget->findChild<EntryView*>("entryView");
@@ -1673,10 +1673,8 @@ void TestGui::testAutoType()
     entryView->selectionModel()->clearSelection();
 }
 
-int TestGui::addCannedEntries()
+void TestGui::addCannedEntries()
 {
-    int entries_added = 0;
-
     // Find buttons
     auto* toolBar = m_mainWindow->findChild<QToolBar*>("toolBar");
     QWidget* entryNewWidget = toolBar->widgetForAction(m_mainWindow->findChild<QAction*>("actionEntryNew"));
@@ -1689,22 +1687,17 @@ int TestGui::addCannedEntries()
     QTest::keyClicks(titleEdit, "test");
     auto* editEntryWidgetButtonBox = editEntryWidget->findChild<QDialogButtonBox*>("buttonBox");
     QTest::mouseClick(editEntryWidgetButtonBox->button(QDialogButtonBox::Ok), Qt::LeftButton);
-    ++entries_added;
 
     // Add entry "something 2"
     QTest::mouseClick(entryNewWidget, Qt::LeftButton);
     QTest::keyClicks(titleEdit, "something 2");
     QTest::keyClicks(passwordEdit, "something 2");
     QTest::mouseClick(editEntryWidgetButtonBox->button(QDialogButtonBox::Ok), Qt::LeftButton);
-    ++entries_added;
 
     // Add entry "something 3"
     QTest::mouseClick(entryNewWidget, Qt::LeftButton);
     QTest::keyClicks(titleEdit, "something 3");
     QTest::mouseClick(editEntryWidgetButtonBox->button(QDialogButtonBox::Ok), Qt::LeftButton);
-    ++entries_added;
-
-    return entries_added;
 }
 
 void TestGui::checkDatabase(QString dbFileName)

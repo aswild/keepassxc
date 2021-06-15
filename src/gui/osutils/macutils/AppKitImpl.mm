@@ -17,13 +17,8 @@
  */
 
 #import "AppKitImpl.h"
-#include "AppKit.h"
-
-#import <AppKit/NSStatusBar.h>
-#import <AppKit/NSStatusItem.h>
-#import <AppKit/NSStatusBarButton.h>
-#import <AppKit/NSWorkspace.h>
-#import <CoreVideo/CVPixelBuffer.h>
+#import <QWindow>
+#import <Cocoa/Cocoa.h>
 
 @implementation AppKitImpl
 
@@ -203,11 +198,10 @@
 
 - (void) toggleForegroundApp:(bool) foreground
 {
-    ProcessSerialNumber psn = {0, kCurrentProcess};
     if (foreground) {
-        TransformProcessType(&psn, kProcessTransformToForegroundApplication);
+        [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
     } else {
-        TransformProcessType(&psn, kProcessTransformToUIElementApplication);
+        [NSApp setActivationPolicy:NSApplicationActivationPolicyProhibited];
     }
 }
 
